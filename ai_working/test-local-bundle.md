@@ -9,18 +9,15 @@ includes:
 
 tools:
   - module: tool-skills
-    source: file://$PWD
+    source: file:///Users/robotdad/Source/Work/skills/amplifier-module-tool-skills
     config:
-      # Uses default: .amplifier/skills, ~/.amplifier/skills
       visibility:
-        enabled: true  # Test visibility feature
+        enabled: true
 ---
 
 # Test Local Skills Bundle
 
 This bundle loads the LOCAL development version of tool-skills (with hooks.py).
-
-**IMPORTANT**: The $PWD variable will be resolved by the shell, so run commands from the amplifier-module-tool-skills directory.
 
 ---
 

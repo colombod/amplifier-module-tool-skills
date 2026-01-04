@@ -1,102 +1,115 @@
 # Manual Testing Steps for Skills Module
 
-**Important**: These steps test the LOCAL development version with hooks.py. The GitHub version doesn't have these changes yet.
+**TESTED AND WORKING** - These steps have been verified end-to-end on 2026-01-04.
 
 ---
 
-## Quick Test
-
-### Prerequisites
-- Must run from: `amplifier-module-tool-skills/` directory
-- Uses `$PWD` in test bundle, so location matters
-
-### Testing (4 commands)
+## Quick Test (4 commands)
 
 ```bash
 cd amplifier-module-tool-skills
 
-# 1. Copy test fixtures to default location
+# 1. Copy test fixtures
 mkdir -p .amplifier && cp -r tests/fixtures/skills .amplifier/
 
-# 2. Register test bundle (loads local development version)
-amplifier bundle add file://$PWD/ai_working/test-local-bundle.md
+# 2. Register the bundle (auto-registers on first use)
+amplifier bundle add ai_working/test-local-bundle.md
 
-# 3. Test visibility
-amplifier run --bundle test-local-skills "What skills do you see available? Don't use any tools."
+# 3. Test visibility - agent should see skills WITHOUT using load_skill tool
+amplifier run --bundle test-local-skills "What skills do you see available? Don't use any tools, just list them."
+
+# 4. Test load_skill tool
+amplifier run --bundle test-local-skills "Use the load_skill tool to load the amplifier-philosophy skill"
 ```
 
-**Expected**: Agent lists 3 skills without calling load_skill tool:
+**Expected Results**:
+
+**Step 3** - Agent lists 3 skills WITHOUT calling load_skill tool:
 - amplifier-philosophy
 - module-development  
 - python-standards
 
-**This proves the visibility hook is working.**
+**Step 4** - Agent successfully loads skill content using the tool
+
+**This proves**: Visibility hook works (skills in context) AND load_skill tool works
 
 ---
 
 ## Cleanup (3 commands)
 
 ```bash
-# 1. Remove bundle
-amplifier bundle remove test-local-skills
+# 1. Remove test skills directory
+find .amplifier -type f -delete && find .amplifier -type d -depth -delete
 
-# 2. Clean persisted registry
+# 2. Remove test skill from user directory (if exists)
+find ~/.amplifier/skills/test-visibility-check -type f -delete 2>/dev/null || true
+find ~/.amplifier/skills/test-visibility-check -type d -depth -delete 2>/dev/null || true
+
+# 3. Clean registry
 cat ~/.amplifier/registry.json | jq 'del(.bundles["test-local-skills"])' > ~/.amplifier/registry.json.tmp && mv ~/.amplifier/registry.json.tmp ~/.amplifier/registry.json
-
-# 3. Remove test files
-rm -rf .amplifier
 ```
 
-**Verify**:
+**Verify Cleanup**:
 ```bash
-amplifier bundle list | grep skills
+ls .amplifier 2>/dev/null || echo "✓ .amplifier directory removed"
+ls ~/.amplifier/skills/ 2>/dev/null || echo "✓ No user skills directory"
+cat ~/.amplifier/registry.json | jq -r '.bundles | keys[]' | grep test || echo "✓ No test bundles in registry"
 ```
-**Expected**: No output
+
+**Expected**: All test artifacts removed
 
 ---
 
-## Why Local Source is Required
+## What Gets Tested
 
-**The Issue**: 
-- Main bundle.md references: `git+https://github.com/microsoft/amplifier-module-tool-skills@main`
-- GitHub doesn't have hooks.py yet (not merged)
-- Testing requires local version
-
-**The Solution**:
-- File `ai_working/test-local-bundle.md` uses: `source: file://$PWD`
-- Loads LOCAL development version with hooks.py
-- Visibility hook runs and injects skills
+- ✅ Skills visibility hook: Agent sees skills in context automatically
+- ✅ Progressive disclosure: Metadata visible (Level 1), full content loaded on demand (Level 2)
+- ✅ Local development version: Loads hooks.py from your working directory
+- ✅ load_skill tool: Successfully loads and displays skill content
+- ✅ Bundle registration: Local file:// source works correctly
 
 ---
 
-## Additional Tests (Optional)
+## How Bundle Loading Actually Works
 
-After registering the bundle:
+**IMPORTANT**: You cannot use bundle file paths directly. The workflow is:
 
-### Test load_skill tool
-```bash
-amplifier run --bundle test-local-skills "Use load_skill to list skills"
-```
+1. **Register bundle** (happens automatically on first use):
+   ```bash
+   amplifier bundle add ai_working/test-local-bundle.md
+   ```
+   This registers the bundle by its `bundle.name` field (in this case: "test-local-skills")
 
-### Test loading full content
-```bash
-amplifier run --bundle test-local-skills "Load the amplifier-philosophy skill"
-```
+2. **Use bundle by name**:
+   ```bash
+   amplifier run --bundle test-local-skills "..."
+   ```
 
-### Test spec compliance
-The new `compatibility` and `allowed-tools` fields are tested by the test suite:
-```bash
-uv run pytest tests/test_hooks.py -v
-```
+**What DOESN'T work**:
+- ❌ `amplifier run --bundle ai_working/test-local-bundle.md` (relative path)
+- ❌ `amplifier run --bundle /full/path/to/test-local-bundle.md` (absolute path)
+
+**What WORKS**:
+- ✅ `amplifier bundle add <path>` + `amplifier run --bundle <name>`
+- ✅ First run auto-registers, subsequent runs use the registered name
 
 ---
 
-## Test Files Included
+## Bundle File Details
 
-**Pre-created**: `ai_working/test-local-bundle.md`
-- Uses `source: file://$PWD` for local loading
-- Bundle name: `test-local-skills`  
-- Just register with `bundle add` and use by name
+The test bundle (`ai_working/test-local-bundle.md`) configures:
 
-**Test fixtures**: `tests/fixtures/skills/`
-- Already in repo, just copy to `.amplifier/`
+```yaml
+bundle:
+  name: test-local-skills  # This becomes the bundle name to use
+  
+tools:
+  - module: tool-skills
+    source: file:///Users/robotdad/Source/Work/skills/amplifier-module-tool-skills
+    # Uses absolute file:// URL to load LOCAL development version
+```
+
+**Key points**:
+- `source: file://` loads your local code (including hooks.py changes)
+- `bundle.name` determines what name to use with `--bundle` flag
+- Bundle auto-registers on first use, stays registered until removed
