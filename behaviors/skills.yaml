@@ -5,8 +5,7 @@ bundle:
 
 tools:
   - module: tool-skills
-    # source: git+https://github.com/microsoft/amplifier-module-tool-skills@main
-    # For local development, use: amplifier source add tool-skills <path>
+    source: git+https://github.com/microsoft/amplifier-module-tool-skills@main
     config:
       # Skills directories (optional - uses defaults if not specified)
       # Default directories:

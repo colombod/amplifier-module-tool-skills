@@ -1,6 +1,21 @@
 # Amplifier Skills Tool Module
 
-Tool for loading domain knowledge from skills in Amplifier.
+Modular capability that adds skill-based domain knowledge loading to Amplifier bundles.
+
+## Overview
+
+This module provides a progressive disclosure knowledge system for Amplifier agents. Skills are reusable knowledge packages that provide specialized expertise, workflows, and best practices following the [Anthropic Skills](https://github.com/anthropics/skills) format.
+
+**What You Get:**
+- 🛠️ **load_skill tool** - Load domain knowledge from skill packages
+- 👁️ **Visibility hook** - Skills automatically shown to agent (no need to list first)
+- 📚 **Multi-source support** - Load skills from multiple directories
+- 🔄 **Progressive disclosure** - Three levels of knowledge depth
+
+**Progressive Disclosure Levels:**
+- **Level 1 (Metadata)**: Name + description (~100 tokens) - Always visible
+- **Level 2 (Content)**: Full markdown body (~1-5k tokens) - Loaded on demand
+- **Level 3 (References)**: Additional files (0 tokens until accessed)
 
 ## Prerequisites
 
@@ -17,80 +32,41 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-## Purpose
+## Installation
 
-Provides explicit skill discovery and loading capabilities for Amplifier agents. Skills are reusable knowledge packages that provide specialized expertise, workflows, and best practices following the [Anthropic Skills](https://github.com/anthropics/skills) format.
+### Recommended: Include the Behavior
 
-**Progressive disclosure knowledge packages**:
-- **Level 1 (Metadata)**: Name + description (~100 tokens) - Always visible
-- **Level 2 (Content)**: Full markdown body (~1-5k tokens) - Loaded on demand
-- **Level 3 (References)**: Additional files (0 tokens until accessed)
-
-## Contract
-
-**Module Type:** Tool  
-**Mount Point:** `tools`  
-**Entry Point:** `amplifier_module_tool_skills:mount`
-
-## Tools Provided
-
-### `load_skill`
-
-Load domain knowledge from an available skill.
-
-**Operations:**
-
-1. **List skills**: `load_skill(list=true)` - Show all available skills
-2. **Search skills**: `load_skill(search="pattern")` - Filter by keyword
-3. **Get metadata**: `load_skill(info="skill-name")` - Metadata only
-4. **Load content**: `load_skill(skill_name="skill-name")` - Full content
-
-**Input Schema:**
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "skill_name": {"type": "string"},
-    "list": {"type": "boolean"},
-    "search": {"type": "string"},
-    "info": {"type": "string"}
-  }
-}
-```
-
-**Output:**
-
-- **List mode**: Array of `{name, description}` objects
-- **Search mode**: Filtered array of matching skills
-- **Info mode**: Metadata object (name, description, version, license, path)
-- **Load mode**: `{content, skill_name, skill_directory, loaded_from}` object
-
-## Configuration
-
-### For Bundle Authors
-
-To include skills capability in your custom bundle, use the behavior pattern:
+Add skills capability to your bundle by including the behavior:
 
 ```yaml
+---
+bundle:
+  name: my-bundle
+  version: 1.0.0
+  description: My custom bundle with skills support
+
 includes:
+  - bundle: git+https://github.com/microsoft/amplifier-foundation@main
   - bundle: git+https://github.com/microsoft/amplifier-module-tool-skills@main#subdirectory=behaviors/skills.yaml
+---
+
+# Your bundle instructions...
 ```
 
-Or if you want to customize the configuration:
+**What this gives you:**
+- ✅ Tool + hook configured correctly together
+- ✅ Default skills directories (`.amplifier/skills/`, `~/.amplifier/skills/`)
+- ✅ Visibility enabled (skills shown automatically to agent)
+- ✅ Clean dependency chain (no redundant includes)
 
-```yaml
-tools:
-  - module: tool-skills
-    source: git+https://github.com/microsoft/amplifier-module-tool-skills@main
-    config:
-      skills_dirs:
-        - /custom/path/to/skills
-```
+**Why this pattern?**
+- You control your foundation version
+- Explicit about what capabilities you're adding
+- Gets both tool + hook working together
 
-### Using the Skills Bundle
+### Alternative: Standalone Bundle
 
-You can use the complete skills bundle directly:
+You can also use the complete skills bundle directly:
 
 ```bash
 # Add the bundle
@@ -101,28 +77,46 @@ amplifier bundle use skills
 amplifier run "List available skills"
 ```
 
-### Bundle Configuration
+**Note:** The standalone bundle includes foundation and is useful for testing or quick experimentation, but the behavior inclusion pattern is recommended for production bundles.
 
-Configure skills in your bundle definition:
+## Quick Start
+
+### 1. Add Skills to Your Bundle
 
 ```yaml
-bundle:
-  name: my-bundle
-  version: 1.0.0
-
+# your-bundle.md
 includes:
   - bundle: git+https://github.com/microsoft/amplifier-foundation@main
-  - bundle: skills:behaviors/skills
-
-tools:
-  - module: tool-skills
-    config:
-      skills_dirs:
-        - ~/.amplifier/skills
-        - ./project-skills
+  - bundle: git+https://github.com/microsoft/amplifier-module-tool-skills@main#subdirectory=behaviors/skills.yaml
 ```
 
-### Recommended: Global Configuration
+### 2. Create Skills Directory
+
+```bash
+mkdir -p .amplifier/skills
+```
+
+### 3. Use Your Bundle
+
+```bash
+amplifier bundle use your-bundle.md
+amplifier run "What skills are available?"
+```
+
+The agent will see available skills automatically - no need to call `load_skill(list=true)` first!
+
+### 4. Optional: Add Anthropic Skills Library
+
+```bash
+# Clone Anthropic's skills repository
+git clone https://github.com/anthropics/skills ~/anthropic-skills
+
+# Configure in settings.yaml (see Configuration section)
+```
+
+## Configuration
+
+### Global Configuration (Recommended)
 
 Add to `~/.amplifier/settings.yaml` to make skills available to **all bundles**:
 
@@ -138,14 +132,6 @@ skills:
     - ~/.amplifier/skills         # User-specific skills
 ```
 
-Then add the tool to any bundle:
-
-```yaml
-# In any bundle
-tools:
-  - module: tool-skills  # No config needed - reads from settings.yaml
-```
-
 ### Project-Specific Configuration
 
 Add to `.amplifier/settings.local.yaml` for project-only skills:
@@ -156,15 +142,90 @@ skills:
     - .amplifier/skills  # Project-specific skills (merged with global)
 ```
 
+### Bundle-Level Override
+
+Override skills directories in your bundle (if needed):
+
+```yaml
+# In your bundle YAML frontmatter
+tools:
+  - module: tool-skills
+    config:
+      skills_dirs:
+        - .amplifier/skills          # Project skills
+        - ~/anthropic-skills/skills  # Anthropic library
+        - ~/my-custom-skills         # Your skills
+      visibility:
+        enabled: true                # Show skills automatically (default: true)
+        max_skills_visible: 50       # Limit for large collections (default: 50)
+```
+
 ### Configuration Priority
 
 1. **Bundle config** (`skills_dirs` in tool config) - highest priority
 2. **Settings.yaml** (`skills.dirs` in global/project settings) - recommended
 3. **Defaults** (`.amplifier/skills`, `~/.amplifier/skills`, `$AMPLIFIER_SKILLS_DIR`) - fallback
 
-## Usage Example
+## Usage
 
-### In Python
+### How Skills Appear to Agents
+
+When skills are configured, agents see them automatically before each request:
+
+```
+<available_skills>
+Available skills (use load_skill tool):
+
+- **python-testing**: Best practices for Python testing with pytest
+- **git-workflow**: Git branching and commit message standards
+- **api-design**: RESTful API design patterns and conventions
+</available_skills>
+```
+
+### The load_skill Tool
+
+**Operations:**
+
+1. **List skills**: `load_skill(list=true)` - Show all available skills
+2. **Search skills**: `load_skill(search="pattern")` - Filter by keyword
+3. **Get metadata**: `load_skill(info="skill-name")` - Metadata only
+4. **Load content**: `load_skill(skill_name="skill-name")` - Full content
+
+### Usage in Bundles
+
+```markdown
+---
+bundle:
+  name: module-creator
+  description: Creates new Amplifier modules
+
+includes:
+  - bundle: git+https://github.com/microsoft/amplifier-foundation@main
+  - bundle: git+https://github.com/microsoft/amplifier-module-tool-skills@main#subdirectory=behaviors/skills.yaml
+---
+
+You are an Amplifier module creator.
+
+Before creating modules:
+1. Skills are visible automatically - review the available_skills list
+2. Load relevant skills: load_skill(skill_name="module-development")
+3. Follow the guidance from the skill
+```
+
+### Agent Workflow Example
+
+```
+User: "Create a new tool module for database access"
+
+Agent sees: <available_skills> containing "module-development"
+
+Agent calls: load_skill(skill_name="module-development")
+Response: [Full guide with protocols, entry points, patterns]
+
+Agent: Creates module following the skill's patterns
+```
+
+### Python API
 
 ```python
 from amplifier_module_tool_skills import SkillsTool
@@ -189,67 +250,9 @@ result = await tool.execute({"skill_name": "python-standards"})
 # Returns: {"content": "# python-standards\n\n...", "skill_directory": "/path/to/skill"}
 ```
 
-### In a Bundle
+## Creating Skills
 
-```markdown
----
-bundle:
-  name: module-creator
-  description: Creates new Amplifier modules
-
-includes:
-  - bundle: git+https://github.com/microsoft/amplifier-foundation@main
-  - bundle: skills:behaviors/skills
----
-
-You are an Amplifier module creator.
-
-Before creating modules:
-1. Call load_skill(list=true) to see available guidelines
-2. Load module-development skill for patterns
-3. Follow the guidance from the skill
-```
-
-### Agent Workflow
-
-```
-User: "Create a new tool module for database access"
-
-Agent calls: load_skill(search="module")
-Response: "**module-development**: Guide for creating modules..."
-
-Agent calls: load_skill(skill_name="module-development")
-Response: [Full guide with protocols, entry points, patterns]
-
-Agent: Creates module following the skill's patterns
-```
-
-## Quick Start with Anthropic Skills
-
-```bash
-# 1. Clone Anthropic's skills repository
-git clone https://github.com/anthropics/skills ~/anthropic-skills
-
-# 2. Configure in settings.yaml
-cat >> ~/.amplifier/settings.yaml << 'EOF'
-sources:
-  tool-skills: git+https://github.com/microsoft/amplifier-module-tool-skills@main
-
-skills:
-  dirs:
-    - ~/anthropic-skills/skills
-    - ~/.amplifier/skills
-EOF
-
-# 3. Add the skills bundle
-amplifier bundle add git+https://github.com/microsoft/amplifier-module-tool-skills@main
-
-# 4. Use it
-amplifier bundle use skills
-amplifier run "List available skills"
-```
-
-## Skills Directory Structure
+### Skills Directory Structure
 
 Skills follow the [Anthropic Skills format](https://github.com/anthropics/skills):
 
@@ -267,7 +270,7 @@ skills-directory/
     └── SKILL.md
 ```
 
-## SKILL.md Format
+### SKILL.md Format
 
 Skills use YAML frontmatter with markdown body:
 
@@ -302,9 +305,7 @@ Instructions the agent follows when skill is loaded.
 **Required fields:** `name` and `description` in YAML frontmatter  
 **Format:** See [Anthropic Skills specification](https://github.com/anthropics/skills)
 
-## Creating Skills
-
-### Simple Skill
+### Creating a Simple Skill
 
 ```bash
 mkdir -p .amplifier/skills/my-skill
@@ -332,7 +333,7 @@ license: MIT
 EOF
 ```
 
-### Skill with References
+### Creating a Skill with References
 
 ```bash
 mkdir -p .amplifier/skills/advanced-skill
@@ -361,6 +362,12 @@ EOF
 echo "# Patterns Guide" > patterns.md
 echo "# Examples" > examples.md
 ```
+
+## Module Contract
+
+**Module Type:** Tool  
+**Mount Point:** `tools`  
+**Entry Point:** `amplifier_module_tool_skills:mount`
 
 ## Testing
 
@@ -425,6 +432,14 @@ uv run pyright
 
 - `amplifier-core` - Core protocols and types
 - `pyyaml>=6.0` - YAML parsing
+
+## Examples
+
+See `examples/skills-example.md` for a complete working example showing:
+- How to include the skills behavior in your bundle
+- How to customize skills directories
+- Why direct behavior inclusion is recommended
+- Complete bundle structure
 
 ## Contributing
 
