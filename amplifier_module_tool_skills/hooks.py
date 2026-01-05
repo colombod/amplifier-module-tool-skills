@@ -60,6 +60,7 @@ class SkillsVisibilityHook:
             context_injection=skills_text,
             context_injection_role=self.inject_role,
             ephemeral=self.ephemeral,
+            suppress_output=True,
         )
     
     def _format_skills_list(self) -> str:
@@ -74,8 +75,7 @@ class SkillsVisibilityHook:
         # Sort and limit
         skills_items = sorted(self.skills.items())[:self.max_visible]
         
-        lines = ["<available_skills>"]
-        lines.append("Available skills (use load_skill tool):")
+        lines = ["Available skills (use load_skill tool):"]
         lines.append("")
         
         for name, metadata in skills_items:
@@ -87,5 +87,13 @@ class SkillsVisibilityHook:
             lines.append("")
             lines.append(f"_({remaining} more - use load_skill(list=true) to see all)_")
         
-        lines.append("</available_skills>")
-        return "\n".join(lines)
+        skills_content = "\n".join(lines)
+        
+        # Add behavioral note consistent with foundation patterns
+        behavioral_note = (
+            "\n\nThis context is for your reference only. DO NOT mention these skills "
+            "to the user unless they ask. Use load_skill tool to access full content when needed."
+        )
+        
+        # Wrap in system-reminder tag with source attribution
+        return f"<system-reminder source=\"hooks-skills-visibility\">\n{skills_content}{behavioral_note}\n</system-reminder>"
