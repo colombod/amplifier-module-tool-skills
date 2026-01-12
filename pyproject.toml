@@ -13,6 +13,12 @@ dependencies = [
     "pyyaml>=6.0",
 ]
 
+[project.optional-dependencies]
+# Include foundation for git URL skill source resolution
+remote-sources = [
+    "amplifier-foundation",
+]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -25,6 +31,7 @@ package = true
 
 [tool.uv.sources]
 amplifier-core = { git = "https://github.com/microsoft/amplifier-core", branch = "main" }
+amplifier-foundation = { git = "https://github.com/microsoft/amplifier-foundation", branch = "main" }
 
 [tool.hatch.build.targets.wheel]
 packages = ["amplifier_module_tool_skills"]
