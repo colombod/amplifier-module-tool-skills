@@ -254,7 +254,7 @@ Skill Discovery:
         self.coordinator = coordinator
         self.loaded_skills: set[str] = set()  # Track which skills have been loaded
 
-        # Use pre-resolved dirs if provided, otherwise discover
+        # Use pre-resolved dirs if provided, otherwise discover from config or defaults
         if resolved_dirs is not None:
             self.skills_dirs = resolved_dirs
             self.skills = discover_skills_multi_source(resolved_dirs)
@@ -263,11 +263,51 @@ Skill Discovery:
             )
         else:
             # Fallback for direct instantiation (testing, etc.)
-            self.skills_dirs = get_default_skills_dirs()
-            self.skills = discover_skills_multi_source(self.skills_dirs)
-            logger.info(
-                f"Discovered {len(self.skills)} skills from default directories"
-            )
+            # First check for cached skills from capability registry
+            if coordinator:
+                cached_skills = coordinator.get_capability("skills.registry")
+                cached_dirs = coordinator.get_capability("skills.directories")
+                if cached_skills is not None and cached_dirs is not None:
+                    self.skills = cached_skills
+                    self.skills_dirs = cached_dirs
+                    logger.info(
+                        f"Reusing {len(self.skills)} skills from capability registry"
+                    )
+                    return
+
+            # Check config for skills directories
+            dirs_from_config = self._get_dirs_from_config()
+            if dirs_from_config:
+                self.skills_dirs = dirs_from_config
+                self.skills = discover_skills_multi_source(dirs_from_config)
+                logger.info(
+                    f"Discovered {len(self.skills)} skills from config directories"
+                )
+            else:
+                self.skills_dirs = get_default_skills_dirs()
+                self.skills = discover_skills_multi_source(self.skills_dirs)
+                logger.info(
+                    f"Discovered {len(self.skills)} skills from default directories"
+                )
+
+    def _get_dirs_from_config(self) -> list[Path] | None:
+        """Extract skills directories from config for direct instantiation.
+
+        Returns:
+            List of paths if found in config, None otherwise.
+        """
+        # Check 'skills_dirs' config
+        if "skills_dirs" in self.config:
+            dirs = self.config["skills_dirs"]
+            if isinstance(dirs, str):
+                dirs = [dirs]
+            return [Path(d).expanduser().resolve() for d in dirs]
+
+        # Check 'skills_dir' config (legacy single directory)
+        if "skills_dir" in self.config:
+            return [Path(self.config["skills_dir"]).expanduser().resolve()]
+
+        return None
 
     @property
     def input_schema(self) -> dict:

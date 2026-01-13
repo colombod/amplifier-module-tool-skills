@@ -39,8 +39,8 @@ async def test_injects_skills_list(sample_skills):
     
     assert result.action == "inject_context"
     assert result.context_injection is not None
-    assert "<available_skills>" in result.context_injection
-    assert "</available_skills>" in result.context_injection
+    assert "<system-reminder" in result.context_injection
+    assert "</system-reminder>" in result.context_injection
     assert "python-testing" in result.context_injection
     assert "git-workflow" in result.context_injection
     assert "api-design" in result.context_injection
@@ -93,8 +93,8 @@ async def test_xml_boundaries_present(sample_skills):
     result = await hook.on_provider_request("provider:request", {})
     
     content = result.context_injection
-    assert content.startswith("<available_skills>")
-    assert content.endswith("</available_skills>")
+    assert content.startswith("<system-reminder")
+    assert content.endswith("</system-reminder>")
     assert "Available skills (use load_skill tool):" in content
 
 

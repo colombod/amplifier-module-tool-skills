@@ -149,8 +149,8 @@ description: Second test skill
     
     # Verify content format
     content = result.context_injection
-    assert "<available_skills>" in content
-    assert "</available_skills>" in content
+    assert "<system-reminder" in content
+    assert "</system-reminder>" in content
     assert "skill-1" in content
     assert "skill-2" in content
     assert "First test skill" in content
