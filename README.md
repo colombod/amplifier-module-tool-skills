@@ -166,6 +166,56 @@ tools:
 2. **Settings.yaml** (`skills.dirs` in global/project settings) - recommended
 3. **Defaults** (`.amplifier/skills`, `~/.amplifier/skills`, `$AMPLIFIER_SKILLS_DIR`) - fallback
 
+### Remote Skills via Git URLs
+
+Skills can be loaded directly from git repositories without cloning them locally. This enables sharing skills across teams and organizations.
+
+**Supported formats:**
+
+```yaml
+skills:
+  dirs:
+    # Full repository as skills directory
+    - git+https://github.com/anthropics/skills@main
+    
+    # Subdirectory within a repository
+    - git+https://github.com/myorg/shared-skills@main#subdirectory=skills
+    
+    # Specific branch or tag
+    - git+https://github.com/myorg/skills@v1.0.0
+    
+    # Mix local and remote sources
+    - .amplifier/skills                    # Local project skills
+    - ~/.amplifier/skills                  # Local user skills
+    - git+https://github.com/team/skills@main  # Shared team skills
+```
+
+**Example: Using Anthropic's Skills Library**
+
+Instead of cloning the repository locally:
+
+```yaml
+# In ~/.amplifier/settings.yaml
+skills:
+  dirs:
+    - git+https://github.com/anthropics/skills@main
+    - ~/.amplifier/skills  # Your custom skills
+```
+
+**How it works:**
+
+1. Git URLs are resolved and cached automatically on first use
+2. Cache is stored in `~/.amplifier/cache/` with content-addressable naming
+3. Subsequent loads use the cache (fast)
+4. Update by clearing the cache: `rm -rf ~/.amplifier/cache/skills-*`
+
+**Benefits:**
+
+- No manual cloning or updating required
+- Version pinning with `@tag` or `@commit`
+- Subdirectory support for monorepos
+- Automatic caching for performance
+
 ## Usage
 
 ### How Skills Appear to Agents
